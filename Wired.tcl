@@ -9,6 +9,11 @@ set val(time)		100;
 #Create a simulator object
 set ns [new Simulator]
 
+#open the trace file
+set nf [open out.tr w]
+#nf is file handler to handle trace file
+$ns trace-all $nf
+
 #Open the output files
 set f0
 set f1
