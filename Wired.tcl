@@ -1,55 +1,89 @@
-####Simple wired script#####
+# Params
+set opt(chan)		Channel;
+set opt(mac)		Mac/802_3;
+set opt(delay)		1ms;
+set opt(numNodes)	5;
+set opt(time)		100;
+set opt(bw)             10Mb;
+set opt(sz)             1000b;
+set opt(ifq) 		Queue/DropTail;
+set opt(ll)             LL;
+set opt(chan)           Channel;
+set opt(phys)           Phy/WiredPhy;
+set opt(trace) 		out.tr;
+set opt(nam)		out.nam;
+set node(0)             0;
 
-set val(chan)		Channel;
-set val(mac)		Mac/802_3;
-set val(delay)		1ms;
-set val(numNodes)	60;
-set val(time)		100;
+proc gen-trace {} {
+	global ns opt
 
-#Create a simulator object
-set ns [new Simulator]
-
-#open the trace file
-set nf [open out.tr w]
-#nf is file handler to handle trace file
-$ns trace-all $nf
-
-#Open the output files
-set f0
-set f1
-set f2
-
-
-##Create topology###
-set num $val(numNodes)
-for {set i 0} {$i < $num} {incr i} {
-	set node($i) [$ns node]
+	set fd [open $opt(trace) w]
+	$ns trace-all $fd
+	return $fd
 }
 
-#connect nodes using duplex link ####
-##use duplex links to connect##
+proc gen-namtrace {} {
+	global ns opt
+	
+	set fd [open $opt(nam) w]
+	$ns namtrace-all $fd
+}
 
+proc gen-topology {} {
+	global ns opt node
 
-##attach agents/UDPs####
+	for {set i 0} {$i < $opt(numNodes)} {incr i} {
+		set node($i) [$ns node]
+		lappend nodelist $node($i)
+	}
+        set lan [$ns make-lan $nodelist $opt(bw) $opt(delay) $opt(ll) $opt(ifq) $opt(mac) $opt(chan) $opt(phys)]
+}
 
+proc gen-udp {} {
+        global ns node
 
-####record the process#####
+        set udp [new Agent/UDP]
+        $ns attach-agent $node(0) $udp
+        set null [new Agent/Null]
+        $ns attach-agent $node(1) $null
+        $ns connect $udp $null
+        $udp set fid_ 2
+        return $udp
+}
 
-###create traffic between nodes####
-###use CBR Constant Bit Rate
+proc gen-cbr {} {
+        global udp opt
+        
+        set cbr [new Application/Traffic/CBR]
+        $cbr attach-agent $udp
+        $cbr set type_ CBR
+        $cbr set packet_size_ $opt(sz)
+        $cbr set rate_ 1mb
+        $cbr set random_ false
+        return $cbr
+}
 
-##finish procedure
 proc finish {} {
-	global f0 f1 f2
-	#close output files
-	close $f0
-	close $f1
-	close $f2
-
-	#call xgraph to display the results
-	#of the original trace file names like the ones below
-	exec xgraph out0.tr out1.tr out2.tr -geometry 800x400 &
-	exit 0
+        global ns opt trfd namfd
+        $ns flush-trace
+        close $trfd
+        close $namfd
+        exec nam $opt(nam) &
+        exit 0
 }
 
+# Main
+set ns [new Simulator]
+set trfd [gen-trace]
+set namfd [gen-namtrace]
 
+gen-topology
+
+set udp [gen-udp]
+set cbr [gen-cbr]
+
+$ns at 0.1 "$cbr start"
+$ns at 8.9 "$cbr stop"
+$ns at 9.9 "finish"
+
+$ns run
