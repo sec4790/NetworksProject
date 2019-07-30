@@ -72,7 +72,6 @@ proc gen-udp {} {
 proc gen-cbr {} {
         global udp opt
 
-        #setup a CBR over UDP connection
         set cbr [new Application/Traffic/CBR]
         $cbr attach-agent $udp
         $cbr set type_ CBR
