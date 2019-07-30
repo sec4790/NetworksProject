@@ -46,27 +46,24 @@ proc gen-topology {} {
         $node(0) color Red
         $node(0) shape box
 
-        #create links between the nodes
+        # Create link from router to lan
         $ns simplex-link $node(0) $node(1) $opt(bw) $opt(delay) DropTail
         $ns simplex-link $node(1) $node(0) $opt(bw) $opt(delay) DropTail
         set lan [$ns newLan $nodelist $opt(bw) $opt(delay) LL Queue/DropTail $opt(mac) Channel]
 
-        #Give node position
+        # Orient left to right
         $ns simplex-link-op $node(0) $node(1) orient right
         $ns simplex-link-op $node(1) $node(0) orient left
-
-        #set queue size of link(n0-n1) to 20
-        #$ns queue-limit $node(0) $node(1) 20
 }
 
 proc gen-udp {} {
-        global udp node ns
+        global udp node ns opt
 
-        #setup a UDP connection
         set udp [new Agent/UDP]
         $ns attach-agent $node(0) $udp
         set null [new Agent/Null]
-        $ns attach-agent $node(3) $null
+        set last [expr $opt(numNodes) - 1]
+        $ns attach-agent $node($last) $null
         $ns connect $udp $null
         $udp set fid_ 1
         return $udp
@@ -90,16 +87,15 @@ set ns [new Simulator]
 set trfd [gen-trace]
 set namfd [gen-namtrace]
 
-#define color for data flows
+# Color data
 $ns color 1 Red
 
-#create six nodes
 gen-topology
 
 set udp [gen-udp]
 set cbr [gen-cbr]
 
-#scheduling the events
+# Configure timeline & run
 set time 0.1
 set now [$ns now]
 $ns at 0.1 "$cbr start"
