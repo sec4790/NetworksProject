@@ -1,5 +1,5 @@
 #==================================
-Define parameters
+#Define parameters
 #==================================
 set val(chan)	Channel/WirelessChannel;
 set val(netif)	Phy/WirelessPhy;
@@ -12,12 +12,17 @@ set val(ifqlen)	50;
 set val(nn)		2; 
 set val(rp)		DSDV;
 
+
+set f0 [open throu0.tr]
+set f1 [open loss0.tr]
+set f2 [open delay.tr]
+
 #Initialize simulator
-set ns_ [new Simulator]
+set ns [new Simulator]
 
 #Initialize trace file
 set tracefd [open wireless_trace.tr w]
-$ns_ trace-all $tracefd
+$ns trace-all $tracefd
 
 #initialize network animator
 set namtrace [open wireless_trace.nam w]
@@ -57,12 +62,12 @@ for {set i 0} {$i < $val(nn) } {incr i} {
 #
 # Provide initial (X,Y, for now Z=0) co-ordinates for node_(0) and node_(1)
 #
-$node_(0) set X_ 5.0
-$node_(0) set Y_ 2.0
+$node_(0) set X_ 133
+$node_(0) set Y_ 474
 $node_(0) set Z_ 0.0
 
-$node_(1) set X_ 390.0
-$node_(1) set Y_ 385.0
+$node_(1) set X_ 333
+$node_(1) set Y_ 474
 $node_(1) set Z_ 0.0
 
 #Produce simple node movements where node 1 moves towards node 0#
@@ -70,18 +75,27 @@ $ns_ at 50.0 "$node_(1) setdest 25.0 20.0 15.0"
 $ns_ at 10.0 "$node_(0) setdest 20.0 18.0 1.0"
 $ns_ at 100.0 "$node_(1) setdest 490.0 480.0 15.0"
 
+
 #Set up connection and traffic flow between the two nodes#
 
+set sink [new Agent/LossMonitor]
+$ns_ attach-agent $node_(0) $sink
 
-set tcp [new Agent/TCP]
-$tcp set class_ 2
+
+set agent [new Agent/UDP]
+$agent set class_ 2
 set sink [new Agent/TCPSink]
-$ns_ attach-agent $node_(0) $tcp
+$ns_ attach-agent $node_(0) $agent
 $ns_ attach-agent $node_(1) $sink
-$ns_ connect $tcp $sink
-set ftp [new Application/FTP]
-$ftp attach-agent $tcp
-$ns_ at 10.0 "$ftp start" 
+$ns_ connect $agent $sink
+set cbr [new Application/Traffic/CBR]
+$cbr attach-agent $agent
+$ns_ at 10.0 "$cbr start" 
+
+
+
+
+
 
 #
 # Tell nodes when the simulation ends
@@ -95,6 +109,7 @@ proc stop {} {
     global ns_ tracefd
     $ns_ flush-trace
     close $tracefd
+
 }
 
 puts "Starting Simulation..."
